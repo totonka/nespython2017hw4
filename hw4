@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Feb 10 23:08:02 2018
+
+@author: maria.ilinykh
+"""
+import re
+import requests
+import numpy as np
+import pandas as pd
+
+#%%1
+import zipfile, io
+pd.set_option('float_format', '{:6.5f}'.format)
+np.set_printoptions(precision=3, suppress=True)
+
+zip_file_url = 'https://drive.google.com/uc?export= download&id=0B6ZlG_Eygdj-c1kzcmUxN05VUXM'
+r = requests.get(zip_file_url)
+z = zipfile.ZipFile(io.BytesIO(r.content))
+z.extractall()
+z.namelist()
+
+file_one = z.open('survey_results_public.csv')
+file_two =z.open('survey_results_schema.csv')
+
+file_one = pd.read_csv(file_one)
+file_two = pd.read_csv(file_two, header = 0)
+
+#%%2
+data = file_one.set_index('Respondent')
+data.iloc[:,:1].head()
+
+schema = file_two.set_index('Column')
+schema.head()
+
+len(data)
+data.Professional.value_counts()
+
+
+data.Country.value_counts(10)[:10]
+data.Country.value_counts()[:10]
+#%%3
+url = 'https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_population'
+response = requests.get(url)
+wiki = pd.read_html(response.content)[1]
+wiki.columns = wiki.iloc[0]
+wiki = wiki.reindex(wiki.index.drop(0))
+wiki.head()
+for i in range (1,len(wiki)): 
+    wiki['Country (or dependent territory)'][i] = re.sub(r'\s\(.*\)', "", wiki['Country (or dependent territory)'][i]) 
+
+for i in range (1,len(wiki)): 
+    wiki['Country (or dependent territory)'][i] = re.sub(r'\[.*\]', "", wiki['Country (or dependent territory)'][i]) 
+wiki.head() 
+
+w = wiki.rename(index=str, columns={"Country (or dependent territory)":"Country"})
+w = w.set_index('Country')
+w.head()
+
+pop_w = w.Population
+pop_w.head()
+
+
+a = data.Country.value_counts()
+print(a)
+a = pd.DataFrame(a)
+a1 = a[a.Country  > 100]
+result = pd.concat([a1, pop_w], axis=1, join='inner')
+
+result['Population'] = result['Population'].astype(int) 
+result['Ratio'] = result['Country']/result['Population'] 
+pd.set_option('float_format', '{:6.6f}'.format) 
+result.head() 
+
+output = result.sort_values(['Ratio'], ascending=[False]) 
+print(output.head(10))
+#%%4
+
+data.VersionControl.value_counts()
+#%%5
+data['HaveWorkedLanguage'].head()
+
+languages1 = data['HaveWorkedLanguage'].dropna()
+lang = []
+for i in languages1:
+    g = i.split(';')
+    for e in g:
+        e = e.strip(' ')
+        lang.append(e)
+languages = set(lang)
+print(languages)
+
+#%%6
+a = pd.Series(0, index = languages)
+languages = data['HaveWorkedLanguage'].dropna()
+for i in languages:
+    g = i.split(';')
+    for e in g:
+        e = e.strip(' ')
+        a[e] = a[e] + 1
+a2 = a.sort_values(ascending = False)
+a2[:10]
+#%%8 Сколько получают программисты в США?
+
+data1 = file_one.set_index('Country')
+hist100 = data1['Salary'][data1.index == 'United States'].dropna()[:100]
+import matplotlib.pylab as plt
+fig = plt.figure()
+size = fig.get_size_inches()*fig.dpi
+plt.hist(hist100)
+plt.show()
+#%%
+
