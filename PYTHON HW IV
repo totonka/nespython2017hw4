@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Feb 12 09:15:46 2018
+
+@author: Anastasiia
+"""
+
+
+import requests
+import zipfile
+import io
+import pandas as pd
+
+#%% QUESTION I
+
+#Downloading data from the webpage
+url = 'https://drive.google.com/uc?export=download&id=0B6ZlG_Eygdj-c1kzcmUxN05VUXM'
+response = requests.get(url)
+
+#Reading ZIP-file
+data = zipfile.ZipFile(io.BytesIO(response.content))
+data.namelist()
+
+#Creating seperate dataframes for Questions and Answers
+public = pd.read_csv(data.open('survey_results_public.csv'))
+schema = pd.read_csv(data.open('survey_results_schema.csv'))
+
+#How many questions were asked during the survey?
+len(schema)
+
+#How many people participated in the survey? 
+len(public)
+#%% QUESTION II
+
+#Count respondents from each country. Top 10 countries are...
+country = public.groupby('Country')['Respondent'].count()
+country.sort_values(ascending = False, inplace=True)
+print(country.head(10))
+
+#In shares...
+by_share = country/len(public)
+print(by_share.head(10))
+
+#%% QUESTION III
+
+#Find countries with the number of respondents no less than 100
+A = pd.DataFrame(country.loc[country >= 100])
+A.tail(10)
+
+#Read the table with population data from the webpage
+url = 'https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_population'
+response = requests.get(url)
+wiki = pd.read_html(response.content, header = 0)
+population = wiki[1]
+population['Country (or dependent territory)'] = population['Country (or dependent territory)'].str.split('[', expand = True)
+B = population[['Country (or dependent territory)', 'Population']]
+
+#Merge tables 
+pd.merge(A, B, left_on='Country', right_on='Country (or dependent territory)', how='left')
+
+#%% QUESTION IV
+
+#Most popular version control systems in descending order 
+version = public.groupby('VersionControl')['Respondent'].count()
+version.sort_values(ascending = False, inplace=True)
+print(version.head(10))
+
+#%% QUESTION V
+
+#First look at the most popular programming languages
+public['HaveWorkedLanguage'].head()
+
+#The list of all programming languages mentioned
+a = list(public['HaveWorkedLanguage'])
+a ='; '.join(str(i) for i in a)
+a = a.split('; ')
+
+language = []
+for i in a:
+    if i not in language:
+        language.append(i)
+        
+#%% QUESTION VIII
+
+
+
+
